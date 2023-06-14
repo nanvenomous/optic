@@ -1,4 +1,4 @@
-package toss
+package optic
 
 import (
 	"encoding/json"
@@ -66,32 +66,4 @@ func Reflect[R, S any](path string, eye Eye[R, S]) {
 
 		sendBytes(w, http.StatusOK, send)
 	})
-
-	// return func(c *gin.Context) {
-	// 	var (
-	// 		err    error
-	// 		exn    *toss.Exception
-	// 		authId string
-	// 		req    R
-	// 		send   *S
-	// 	)
-	// 	authId, err = keycloak.UserFromToken(database.CTX, c.GetHeader("Authorization"))
-	// 	// authId, err = security.ValidateTokenFromRequestHeader(c)
-	// 	if err != nil {
-	// 		exception.Handler(c, err, exception.BadTokenRequestError)
-	// 		return
-	// 	}
-
-	// 	if err = c.ShouldBindJSON(&req); err != nil {
-	// 		exception.Handler(c, err, exception.UnprocessableRequestEntityError)
-	// 		return
-	// 	}
-	// 	send, exn = logic(authId, &req)
-	// 	if exn != nil {
-	// 		exception.Handler(c, exn.Internal, exn.Message)
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusOK, send)
-	// }
 }

@@ -1,4 +1,4 @@
-package toss
+package optic
 
 import (
 	"bytes"
