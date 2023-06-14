@@ -9,6 +9,10 @@ import (
 	"net/url"
 )
 
+const (
+	DEFAULT_BASE_PATH = "/optic/"
+)
+
 type Exception struct {
 	Internal string `json:"internal"`
 	Message  string `json:"message"`

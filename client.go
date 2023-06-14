@@ -3,13 +3,34 @@ package optic
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 )
 
-var ServiceEndpoint string
+var (
+	ServiceEndpoint string
+	ClientUrl       *url.URL
+)
 
-func Post[S, R any](tkn string, path string, send *S) (*R, *Exception, error) {
+func SetupClient(host, port, path string, secure bool) {
+	schm := "http"
+	if secure {
+		schm = "https"
+	}
+	if port != "" {
+		host = fmt.Sprintf("%s:%s", host, port)
+	}
+	path = filepath.Join(path, DEFAULT_BASE_PATH)
+	ClientUrl = &url.URL{
+		Scheme: schm,
+		Host:   host,
+		Path:   path,
+	}
+}
+
+func Reflect[S, R any](tkn string, path string, send *S) (*R, *Exception, error) {
 	var (
 		err  error
 		exn  *Exception
@@ -25,11 +46,7 @@ func Post[S, R any](tkn string, path string, send *S) (*R, *Exception, error) {
 		return nil, nil, err
 	}
 
-	url, err = GetUrl(ServiceEndpoint, path)
-	if err != nil {
-		return nil, nil, err
-	}
-
+	url = ClientUrl.JoinPath(path)
 	req, err = http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(data))
 	if err != nil {
 		return nil, nil, err
@@ -37,58 +54,6 @@ func Post[S, R any](tkn string, path string, send *S) (*R, *Exception, error) {
 	if tkn != "" {
 		req.Header.Add("Authorization", tkn)
 	}
-
-	res, err = http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if res.StatusCode != http.StatusOK {
-		exn, err = getExceptionFromResponse(res)
-		return nil, exn, err
-	}
-
-	recd, err = FromResponse[R](res)
-	if err != nil {
-		return nil, nil, err
-	}
-	return recd, nil, nil
-}
-
-func Get[S, R any](tkn string, path string, send *S, params ...url.Values) (*R, *Exception, error) {
-	var (
-		err    error
-		exn    *Exception
-		url    *url.URL
-		data   []byte
-		tosend = EMPTY_BYTE_ARRAY
-		req    *http.Request
-		res    *http.Response
-		recd   *R
-	)
-
-	url, err = GetUrl(ServiceEndpoint, path)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if send != nil {
-		data, err = json.Marshal(send)
-		if err != nil {
-			return nil, nil, err
-		}
-		tosend = bytes.NewBuffer(data)
-	}
-
-	if len(params) != 0 {
-		url.RawQuery = params[0].Encode()
-	}
-
-	req, err = http.NewRequest(http.MethodGet, url.String(), tosend)
-	if err != nil {
-		return nil, nil, err
-	}
-	req.Header.Add("Authorization", tkn)
 
 	res, err = http.DefaultClient.Do(req)
 	if err != nil {
