@@ -2,6 +2,7 @@ package optic
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -16,22 +17,44 @@ const (
 	colorReverse = "\033[7m"
 )
 
-func Optic() string {
+func optic() string {
 	return fmt.Sprintf("%s(o)%s", colorReverse, colorReset)
 }
 
-func colorTagPrint(tag string, message string, color string) {
-	fmt.Println(fmt.Sprintf("%s %s[%s]%s %s", Optic(), color, tag, colorReset, message))
+func colorReversePrint(tag string, message string, color string) {
+	fmt.Println(fmt.Sprintf("%s%s%s %s %s %s", optic(), colorReverse, color, tag, colorReset, message))
 }
 
-func Green(tag string, message string) {
-	colorTagPrint(tag, message, colorGreen)
+func green(tag string, message string) {
+	colorReversePrint(tag, message, colorGreen)
 }
 
-func Cyan(tag string, message string) {
-	colorTagPrint(tag, message, colorCyan)
+func cyan(tag string, message string) {
+	colorReversePrint(tag, message, colorCyan)
 }
 
-func Yellow(tag string, message string) {
-	colorTagPrint(tag, message, colorYellow)
+func yellow(tag string, message string) {
+	colorReversePrint(tag, message, colorYellow)
+}
+
+func violet(tag string, message string) {
+	colorReversePrint(tag, message, colorViolet)
+}
+
+func reflected(code int, path string) {
+	var (
+		status = fmt.Sprintf("%d", code)
+		color  = colorGreen
+	)
+	if len(status) > 0 {
+		switch status[0] {
+		case '4':
+			color = colorYellow
+		case '5':
+			color = colorRed
+		}
+	}
+
+	path = "/" + strings.Replace(path, Base.String(), "", 1)
+	colorReversePrint(fmt.Sprintf("%d", code), path, color)
 }
