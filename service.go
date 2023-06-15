@@ -22,19 +22,43 @@ var (
 	bytesToSend []byte
 	Port        = "4444"
 	Base        = &url.URL{Path: DEFAULT_BASE_PATH}
+	Mux         *http.ServeMux
+	Middleware  = []func(http.Handler) http.Handler{}
 )
 
-func SetupService(port, base string) {
+func RegisterMiddleware(middleware func(http.Handler) http.Handler) {
+	Middleware = append(Middleware, middleware)
+}
+
+func SetupService(port, base string) *http.ServeMux {
 	Port = port
 	if base != "" {
 		Base = &url.URL{Path: base}
 		Base = Base.JoinPath(DEFAULT_BASE_PATH)
 	}
+	Cyan("BASE", Base.Path)
+	Mux = http.NewServeMux()
+	return Mux
 }
 
 func Serve() error {
-	fmt.Println("Serving on port: ", Port)
-	return http.ListenAndServe(":"+Port, nil)
+	var (
+		handler http.Handler
+		server  *http.Server
+	)
+	handler = Mux
+	for _, mdwr := range Middleware {
+		handler = mdwr(handler)
+	}
+
+	server = &http.Server{
+		Addr:    ":" + Port,
+		Handler: handler,
+	}
+
+	fmt.Println("Serving optic ", Optic(), " on port: ", Port)
+	return server.ListenAndServe()
+	// return http.ListenAndServe(":"+Port, Mux)
 }
 
 func sendBytes[S any](w http.ResponseWriter, code int, send *S) {
@@ -76,9 +100,9 @@ func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 	} else {
 		pth = paths[0]
 	}
-	fmt.Println("[SERVICE ENDPOINT] ", pth)
+	Yellow("ROUTE", pth)
 	ul = Base.JoinPath(pth)
-	http.HandleFunc(ul.Path, func(w http.ResponseWriter, r *http.Request) {
+	Mux.HandleFunc(ul.Path, func(w http.ResponseWriter, r *http.Request) {
 		body, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			SendException(w, &Exception{Code: http.StatusBadRequest, Message: ErrorReadingResponseBody, Internal: err.Error()})
