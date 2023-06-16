@@ -1,7 +1,7 @@
 
 # (o)ptic
 
-A generic web framework / extension to [net/http](https://pkg.go.dev/net/http)
+A generic web extension to [net/http](https://pkg.go.dev/net/http)
 
 Optic focuses on simplifying the data exchange portion of your service, primarily for cases from a go service to a go client (WASM app, cli, ...)
 
@@ -48,6 +48,7 @@ var (
     exn *optic.Exception // service exception
     sln *Solution        // output
 )
+optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
 //                            Put in  , Get out                    Route
 sln, exn, err = optic.Reflect[Division, Solution]("Bearer Token", "/Divide/", &Division{Top: 4, Bottom: 2})
 fmt.Println(err, exn)   // <nil> <nil>
@@ -55,7 +56,7 @@ fmt.Println(sln.Answer) // 2
 ```
 
 
-Optic is drop in compatible with `net/http`
+Optic is drop in compatible with [net/http](https://pkg.go.dev/net/http)
 
 It returns a `*http.ServerMux` for middleware or other routes
 ```go
