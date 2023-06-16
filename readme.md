@@ -3,7 +3,9 @@
 
 A generic web extension to [net/http](https://pkg.go.dev/net/http)
 
-Optic focuses on simplifying the data exchange portion of your service, primarily for cases from a go service to a go client (WASM app, cli, ...)
+Optic focuses on simplifying the i/o data exchange portion of your service, by abstracting the web portion
+
+It is especially useful when making requests to a go service from a go client (WASM app, cli, tui ...)
 
 ## Quick example
 
@@ -91,3 +93,5 @@ For the full example in code see [./examples/main.go](https://github.com/nanveno
 
 Run the example like so:
 ![run example](.rsrc/run-example.gif)
+
+I drew some inspiration from [leptos server functions](https://leptos-rs.github.io/leptos/server/25_server_functions.html)
