@@ -20,6 +20,13 @@ type Solution struct {
 
 Setup the service route
 ```go
+func Divide(recieved *Division, r *http.Request) (send *Solution, exn *optic.Exception) {
+	if recieved.Bottom == 0 { // return an error
+		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
+	}
+	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
+}
+
 var (
     err error
     mux *http.ServeMux
@@ -79,7 +86,7 @@ var (
 handler = exampleMiddleware(mux)
 ```
 
-For the full example in code see `./examples/main.go`
+For the full example in code see [./examples/main.go](https://github.com/nanvenomous/optic/blob/mainline/example/main.go) 
 
 Run the example like so:
 ![run example](.rsrc/run-example.gif)

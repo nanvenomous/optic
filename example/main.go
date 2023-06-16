@@ -37,9 +37,7 @@ func Subtract(recieved *Subtraction, r *http.Request) (send *Solution, exn *opti
 }
 
 func Divide(recieved *Division, r *http.Request) (send *Solution, exn *optic.Exception) {
-
-	// return an error
-	if recieved.Bottom == 0 {
+	if recieved.Bottom == 0 { // return an error
 		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
 	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
