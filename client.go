@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
 )
 
 var (
@@ -22,7 +21,6 @@ func SetupClient(host, port, path string, secure bool) {
 	if port != "" {
 		host = fmt.Sprintf("%s:%s", host, port)
 	}
-	path = filepath.Join(path, DEFAULT_BASE_PATH)
 	ClientUrl = &url.URL{
 		Scheme: schm,
 		Host:   host,

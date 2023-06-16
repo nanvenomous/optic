@@ -2,7 +2,6 @@ package optic
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -34,7 +33,6 @@ func SetupService(port, base string) *http.ServeMux {
 	Port = port
 	if base != "" {
 		Base = &url.URL{Path: base}
-		Base = Base.JoinPath(DEFAULT_BASE_PATH)
 	}
 	cyan("BASE", Base.Path)
 	Mux = http.NewServeMux()
@@ -56,7 +54,8 @@ func Serve() error {
 		Handler: handler,
 	}
 
-	fmt.Println("Serving optic ", optic(), " on port: ", Port)
+	serving(Port)
+	// fmt.Println("Serving optic ", optic(), " on port: ", Port)
 	return server.ListenAndServe()
 }
 

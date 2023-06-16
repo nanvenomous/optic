@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DEFAULT_BASE_PATH = "/optic/"
+	DEFAULT_BASE_PATH = "/"
 )
 
 type Exception struct {

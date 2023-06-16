@@ -17,6 +17,16 @@ const (
 	colorReverse = "\033[7m"
 )
 
+func serving(port string) {
+	msg := fmt.Sprintf("%s(o)ptic%s watching on: %s", colorReverse, colorReset, port)
+	fmt.Println(msg)
+	sz := 21 + len(port)
+	for i := 0; i < sz; i++ {
+		fmt.Print("-")
+	}
+	fmt.Print("\n")
+}
+
 func optic() string {
 	return fmt.Sprintf("%s(o)%s", colorReverse, colorReset)
 }
