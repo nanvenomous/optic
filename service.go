@@ -29,14 +29,15 @@ func RegisterMiddleware(middleware func(http.Handler) http.Handler) {
 	Middleware = append(Middleware, middleware)
 }
 
-func SetupService(port, base string) *http.ServeMux {
+func SetupService(port, base string, mux *http.ServeMux) {
 	Port = port
 	if base != "" {
 		Base = &url.URL{Path: base}
 	}
 	cyan("BASE", Base.Path)
-	Mux = http.NewServeMux()
-	return Mux
+	if mux != nil {
+		Mux = mux
+	}
 }
 
 func Serve() error {
@@ -90,13 +91,14 @@ func getFunctionName(i interface{}) string {
 
 func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 	var (
-		err  error
-		body []byte
-		rec  R
-		send *S
-		exn  *Exception
-		pth  string
-		ul   *url.URL
+		err        error
+		body       []byte
+		rec        R
+		send       *S
+		exn        *Exception
+		pth        string
+		ul         *url.URL
+		handleFunc func(http.ResponseWriter, *http.Request)
 	)
 
 	if len(paths) == 0 { // not passing a path will simply use the function name
@@ -106,7 +108,8 @@ func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 	}
 	violet("PATH", pth)
 	ul = Base.JoinPath(pth)
-	Mux.HandleFunc(ul.Path, func(w http.ResponseWriter, r *http.Request) {
+
+	handleFunc = func(w http.ResponseWriter, r *http.Request) {
 		body, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			SendException(w, r, &Exception{Code: http.StatusBadRequest, Message: ErrorReadingResponseBody, Internal: err.Error()})
@@ -126,5 +129,11 @@ func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 		}
 
 		sendBytes(w, r, http.StatusOK, send)
-	})
+	}
+
+	if Mux != nil {
+		Mux.HandleFunc(ul.Path, handleFunc)
+	} else {
+		http.HandleFunc(ul.Path, handleFunc)
+	}
 }
