@@ -28,7 +28,7 @@ func SetupClient(host, port, path string, secure bool) {
 	}
 }
 
-func Glance[S, R any](tkn string, path string, send *S, recieve *R) (*Exception, error) {
+func Glance[S, R any](path string, send *S, recieve *R, headers ...http.Header) (*Exception, error) {
 	var (
 		err  error
 		exn  *Exception
@@ -48,9 +48,10 @@ func Glance[S, R any](tkn string, path string, send *S, recieve *R) (*Exception,
 	if err != nil {
 		return nil, err
 	}
-	if tkn != "" {
-		req.Header.Add("Authorization", tkn)
+	if len(headers) > 0 {
+		req.Header = headers[0]
 	}
+	req.Header.Add("credentials", "include")
 
 	res, err = http.DefaultClient.Do(req)
 	if err != nil {

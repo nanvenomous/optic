@@ -2,6 +2,7 @@ package optic
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -75,6 +76,8 @@ func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S)
 }
 
 func SendException(w http.ResponseWriter, r *http.Request, exn *Exception) {
+	fmt.Println("[MESSAGE] ", exn.Message)
+	fmt.Println("[INTERNAL] ", exn.Internal)
 	sendBytes(w, r, exn.Code, exn)
 }
 
