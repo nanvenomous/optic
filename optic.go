@@ -25,20 +25,19 @@ var (
 
 type Empty struct{}
 
-func FromResponse[T any](res *http.Response) (*T, error) {
+func FromResponse[T any](res *http.Response, recieved *T) error {
 	var (
 		err error
-		tg  T
 	)
 	defer res.Body.Close()
 	if res.StatusCode == http.StatusOK {
-		err = json.NewDecoder(res.Body).Decode(&tg)
+		err = json.NewDecoder(res.Body).Decode(recieved)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return &tg, nil
+		return nil
 	}
-	return nil, errors.New(fmt.Sprintf("The response failed with status %s", res.Status))
+	return errors.New(fmt.Sprintf("The response failed with status %s", res.Status))
 }
 
 func GetUrl(base string, elem ...string) (*url.URL, error) {

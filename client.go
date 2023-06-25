@@ -28,7 +28,7 @@ func SetupClient(host, port, path string, secure bool) {
 	}
 }
 
-func Reflect[S, R any](tkn string, path string, send *S) (*R, *Exception, error) {
+func Glance[S, R any](tkn string, path string, send *S, recieve *R) (*Exception, error) {
 	var (
 		err  error
 		exn  *Exception
@@ -36,18 +36,17 @@ func Reflect[S, R any](tkn string, path string, send *S) (*R, *Exception, error)
 		url  *url.URL
 		req  *http.Request
 		res  *http.Response
-		recd *R
 	)
 
 	data, err = json.Marshal(send)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	url = ClientUrl.JoinPath(path)
 	req, err = http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(data))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if tkn != "" {
 		req.Header.Add("Authorization", tkn)
@@ -55,17 +54,17 @@ func Reflect[S, R any](tkn string, path string, send *S) (*R, *Exception, error)
 
 	res, err = http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if res.StatusCode != http.StatusOK {
 		exn, err = getExceptionFromResponse(res)
-		return nil, exn, err
+		return exn, err
 	}
 
-	recd, err = FromResponse[R](res)
+	err = FromResponse[R](res, recieve)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return recd, nil, nil
+	return nil, nil
 }
