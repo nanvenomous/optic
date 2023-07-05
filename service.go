@@ -94,11 +94,6 @@ func getFunctionName(i interface{}) string {
 
 func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 	var (
-		err        error
-		body       []byte
-		rec        R
-		send       *S
-		exn        *Exception
 		pth        string
 		ul         *url.URL
 		handleFunc func(http.ResponseWriter, *http.Request)
@@ -113,6 +108,14 @@ func Mirror[R, S any](eye Eye[R, S], paths ...string) {
 	ul = Base.JoinPath(pth)
 
 	handleFunc = func(w http.ResponseWriter, r *http.Request) {
+		var (
+			err  error
+			body []byte
+			rec  R
+			send *S
+			exn  *Exception
+		)
+
 		body, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			SendException(w, r, &Exception{Code: http.StatusBadRequest, Message: ErrorReadingResponseBody, Internal: err.Error()})
