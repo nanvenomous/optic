@@ -16,14 +16,13 @@ var (
 	ErrorUnmarshalingResponseBody = "There was an error unmarshaling the request data into the proper format."
 )
 
-type Eye[R, S any] func(*R, *http.Request) (*S, *Exception)
+type Eye[S, R any] func(*R, *http.Request) (*S, *Exception)
 
 var (
-	bytesToSend []byte
-	Port        = "4444"
-	Base        = &url.URL{Path: DEFAULT_BASE_PATH}
-	Mux         *http.ServeMux
-	Middleware  = []func(http.Handler) http.Handler{}
+	Port       = "4444"
+	Base       = &url.URL{Path: DEFAULT_BASE_PATH}
+	Mux        *http.ServeMux
+	Middleware = []func(http.Handler) http.Handler{}
 )
 
 func RegisterMiddleware(middleware func(http.Handler) http.Handler) {
@@ -57,20 +56,20 @@ func Serve() error {
 	}
 
 	serving(Port)
-	// fmt.Println("Serving optic ", optic(), " on port: ", Port)
 	return server.ListenAndServe()
 }
 
 func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S) {
 	var (
-		err error
+		err         error
+		bytesToSend []byte
 	)
 	bytesToSend, err = json.Marshal(send)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reflected(code, r.URL.Path)
+	// reflected(code, r.URL.Path)
 	w.WriteHeader(code)
 	w.Write(bytesToSend)
 }
@@ -92,7 +91,7 @@ func getFunctionName(i interface{}) string {
 	return pth
 }
 
-func Mirror[R, S any](eye Eye[R, S], paths ...string) {
+func Mirror[R, S any](eye Eye[S, R], paths ...string) {
 	var (
 		pth        string
 		ul         *url.URL
