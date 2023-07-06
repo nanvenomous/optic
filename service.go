@@ -3,7 +3,6 @@ package optic
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -61,17 +60,17 @@ func Serve() error {
 
 func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S) {
 	var (
-		err         error
-		bytesToSend []byte
+		err     error
+		encoder *json.Encoder
 	)
-	bytesToSend, err = json.Marshal(send)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	encoder = json.NewEncoder(w)
+	err = encoder.Encode(send)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// reflected(code, r.URL.Path)
-	w.WriteHeader(code)
-	w.Write(bytesToSend)
 }
 
 func SendException(w http.ResponseWriter, r *http.Request, exn *Exception) {
@@ -108,20 +107,15 @@ func Mirror[R, S any](eye Eye[S, R], paths ...string) {
 
 	handleFunc = func(w http.ResponseWriter, r *http.Request) {
 		var (
-			err  error
-			body []byte
-			rec  R
-			send *S
-			exn  *Exception
+			err     error
+			rec     R
+			send    *S
+			exn     *Exception
+			decoder *json.Decoder
 		)
 
-		body, err = ioutil.ReadAll(r.Body)
-		if err != nil {
-			SendException(w, r, &Exception{Code: http.StatusBadRequest, Message: ErrorReadingResponseBody, Internal: err.Error()})
-			return
-		}
-
-		err = json.Unmarshal(body, &rec)
+		decoder = json.NewDecoder(r.Body)
+		err = decoder.Decode(&rec)
 		if err != nil {
 			SendException(w, r, &Exception{Code: http.StatusNotAcceptable, Message: ErrorUnmarshalingResponseBody, Internal: err.Error()})
 			return

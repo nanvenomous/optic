@@ -63,7 +63,7 @@ func Glance[S, R any](path string, send *S, recieve *R, headers ...http.Header) 
 		return exn, err
 	}
 
-	err = FromResponse[R](res, recieve)
+	err = FromResponse(res, recieve)
 	if err != nil {
 		return nil, err
 	}
