@@ -71,6 +71,7 @@ func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	reflected(code, r.URL.Path)
 }
 
 func SendException(w http.ResponseWriter, r *http.Request, exn *Exception) {
