@@ -6,6 +6,17 @@ Optic helps you call backend functions from your frontend by sending a regular g
 
 It is especially useful when making requests to a go service from a go client (WASM app, cli, tui ...)
 
+## Install
+```bash
+go get github.com/nanvenomous/optic
+```
+Then import with
+```go
+import (
+	"github.com/nanvenomous/optic"
+)
+```
+
 ## Quick example
 
 Define the entities
@@ -38,6 +49,11 @@ func main() {
 
 	// An optic mirror simply recieves information and sends information back
 	optic.Mirror(Divide) // by default optic will use function name as route
+
+	err = optic.Serve() // run the service
+	if err != nil {
+		panic(err)
+	}
 }
 ```
 
@@ -58,6 +74,7 @@ func main {
 }
 ```
 
+## net/http compatibility
 Optic is drop in compatible with [net/http](https://pkg.go.dev/net/http)
 
 Give optic a `*http.ServerMux` & a special route where it will handle all you functions
@@ -95,9 +112,15 @@ func exampleMiddleware(next http.Handler) http.Handler {
 }
 ```
 
+## Examples
 For the full example in code see [./examples/main.go](https://github.com/nanvenomous/optic/blob/mainline/example/main.go) 
 
 Run the example like so:
 ![run example](.rsrc/run-example.gif)
 
+## Simplicity
+https://github.com/nanvenomous/optic/blob/b8a94eb20e2ae535252c56ea8d283f2b794cffd4/go.mod#L1-L3
+
+
+## Inspiration
 I drew some inspiration from [leptos server functions](https://leptos-rs.github.io/leptos/server/25_server_functions.html)

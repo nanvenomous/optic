@@ -64,7 +64,7 @@ func setupService() {
 
 	// for this example, run the service in the background
 	go func() {
-		err = optic.Serve()
+		err = optic.Serve() // run the service
 		if err != nil {
 			panic(err)
 		}
