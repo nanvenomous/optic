@@ -48,7 +48,8 @@ func setupService() {
 		err error
 		mux *http.ServeMux
 	)
-	mux = optic.SetupService(PORT, OPTIC_ROUTE)
+	mux = http.NewServeMux()
+	optic.SetupService(PORT, OPTIC_ROUTE, mux)
 
 	// An optical mirror simply recieves information and sends information back
 	optic.Mirror(Subtract, "/RunSubtraction/")
@@ -80,18 +81,18 @@ func main() {
 	var (
 		err error            // internal error
 		exn *optic.Exception // service exception
-		sln *Solution        // output
+		sln Solution         // output
 	)
-	sln, exn, err = optic.Reflect[Subtraction, Solution]("Bearer Token", "/RunSubtraction/", &Subtraction{First: 1, Second: 2})
+	exn, err = optic.Glance("/RunSubtraction/", &Subtraction{First: 1, Second: 2}, &sln)
 	fmt.Println(err, exn)   // <nil> <nil>
 	fmt.Println(sln.Answer) // -1
 
-	sln, exn, err = optic.Reflect[Division, Solution]("Bearer Token", "/Divide/", &Division{Top: 1, Bottom: 0})
+	exn, err = optic.Glance("/Divide/", &Division{Top: 1, Bottom: 0}, &sln)
 	fmt.Println(err, exn) // <nil> &{ Impossible to divide by Zero 422}
 	fmt.Println(sln)      // <nil>
 
-	//                            Put in  , Get out                    Route
-	sln, exn, err = optic.Reflect[Division, Solution]("Bearer Token", "/Divide/", &Division{Top: 4, Bottom: 2})
+	//                                  send                          receive
+	exn, err = optic.Glance("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
 	fmt.Println(err, exn)   // <nil> <nil>
 	fmt.Println(sln.Answer) // 2
 }
