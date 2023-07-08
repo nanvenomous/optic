@@ -1,9 +1,8 @@
-
 # (o)ptic
 
 A generic web extension to [net/http](https://pkg.go.dev/net/http)
 
-Optic focuses on simplifying the i/o data exchange portion of your service, by abstracting the web portion
+Optic helps you call backend functions from your frontend by sending a regular go struct and recieving a struct back
 
 It is especially useful when making requests to a go service from a go client (WASM app, cli, tui ...)
 
@@ -22,55 +21,70 @@ type Solution struct {
 
 Setup the service route
 ```go
-func Divide(recieved *Division, r *http.Request) (send *Solution, exn *optic.Exception) {
+func Divide(recieved *Division, r *http.Request) (*Solution, *optic.Exception) {
 	if recieved.Bottom == 0 { // return an error
 		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
 	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
 }
 
-var (
-    err error
-    mux *http.ServeMux
-)
-mux = optic.SetupService(PORT, OPTIC_ROUTE)
-// An optic mirror simply recieves information and sends information back
-optic.Mirror(Divide) // by default optic will use function name as route
-// run the service
-err = optic.Serve()
-if err != nil {
-    panic(err)
+func main() {
+	var (
+		err error
+		mux *http.ServeMux
+	)
+	mux = http.NewServeMux()
+	optic.SetupService(PORT, OPTIC_ROUTE, mux)
+
+	// An optic mirror simply recieves information and sends information back
+	optic.Mirror(Divide) // by default optic will use function name as route
 }
 ```
 
 Setup the client and make a request
 ```go
-var (
-    err error            // internal error
-    exn *optic.Exception // service exception
-    sln *Solution        // output
-)
-optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
-//                            Put in  , Get out                    Route
-sln, exn, err = optic.Reflect[Division, Solution]("Bearer Token", "/Divide/", &Division{Top: 4, Bottom: 2})
-fmt.Println(err, exn)   // <nil> <nil>
-fmt.Println(sln.Answer) // 2
+func main {
+	optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
+	// Make requests
+	var (
+		err error            // internal error
+		exn *optic.Exception // service exception
+		sln Solution         // output
+	)
+	//                                  send                          receive
+	exn, err = optic.Glance("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
+	fmt.Println(err, exn)   // <nil> <nil>
+	fmt.Println(sln.Answer) // 2
+}
 ```
-
 
 Optic is drop in compatible with [net/http](https://pkg.go.dev/net/http)
 
-It returns a `*http.ServerMux` for middleware or other routes
+Give optic a `*http.ServerMux` & a special route where it will handle all you functions
+
+Then do whatever else you want with that mux
 ```go
-var (
-    err error
-    mux *http.ServeMux
-)
-mux = optic.SetupService(PORT, OPTIC_ROUTE)
-// Add other routes not handled by optic, as you would with any net/http service
-mux.HandleFunc("/health-check/", func(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-})
+func main() {
+	var (
+		err error
+		mux *http.ServeMux
+	)
+	mux = http.NewServeMux()
+	optic.SetupService(PORT, OPTIC_ROUTE, mux)
+
+    // Add other routes not handled by optic, as you would with any net/http service
+    mux.HandleFunc("/health-check/", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+    })
+
+    // optic can register middleware for you
+    optic.RegisterMiddleware(exampleMiddleware)
+    // or you can do it yourself
+    var (
+        handler http.Handler
+    )
+    handler = exampleMiddleware(mux)
+}
 
 func exampleMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,14 +93,6 @@ func exampleMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-// optic can register middleware for you
-optic.RegisterMiddleware(exampleMiddleware)
-// or you can do it yourself
-var (
-    handler http.Handler
-)
-handler = exampleMiddleware(mux)
 ```
 
 For the full example in code see [./examples/main.go](https://github.com/nanvenomous/optic/blob/mainline/example/main.go) 

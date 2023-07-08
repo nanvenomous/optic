@@ -29,14 +29,14 @@ type Division struct {
 	Bottom int
 }
 
-func Subtract(recieved *Subtraction, r *http.Request) (send *Solution, exn *optic.Exception) {
+func Subtract(recieved *Subtraction, r *http.Request) (*Solution, *optic.Exception) {
 	// Do something with a header (like check Authorization)
 	fmt.Println(r.Header.Get("Authorization"))
 
 	return &Solution{Answer: recieved.First - recieved.Second}, nil
 }
 
-func Divide(recieved *Division, r *http.Request) (send *Solution, exn *optic.Exception) {
+func Divide(recieved *Division, r *http.Request) (*Solution, *optic.Exception) {
 	if recieved.Bottom == 0 { // return an error
 		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
