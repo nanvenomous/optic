@@ -74,6 +74,19 @@ func main {
 }
 ```
 
+## Serialization errors
+Optic handles 2 errors for you
+```
+var (
+	ErrorReadingResponseBody      = "There was an error reading the request data. Are you sure you sent a valid request body?"
+	ErrorUnmarshalingResponseBody = "There was an error unmarshaling the request data into the proper format."
+)
+```
+You can override one of these error messages with:
+```
+optic.ErrorReadingResponseBody = "Custom message"
+```
+
 ## net/http compatibility
 Optic is drop in compatible with [net/http](https://pkg.go.dev/net/http)
 
