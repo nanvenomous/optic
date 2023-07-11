@@ -19,7 +19,7 @@ import (
 
 ## Quick example
 
-Define the entities
+Define the entities and error interface
 ```go
 type Division struct {
 	Top    int
@@ -28,32 +28,39 @@ type Division struct {
 type Solution struct {
 	Answer int
 }
+
+type UserHttpError struct {
+	Message string
+	Code    int
+}
+
+func (e *UserHttpError) GetCode() int {
+	return e.Code
+}
 ```
 
 Setup the service route
 ```go
-func Divide(recieved *Division, r *http.Request) (*Solution, *optic.Exception) {
+func Divide(recieved *Division, r *http.Request) (*Solution, optic.HttpError) {
 	if recieved.Bottom == 0 { // return an error
-		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
+		return nil, &UserHttpError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
 	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
 }
 
 func main() {
 	var (
-		err error
-		mux *http.ServeMux
+		err       error
+		encodeErr = &UserHttpError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
+		decodeErr = &UserHttpError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
+		mux       *http.ServeMux
 	)
 	mux = http.NewServeMux()
-	optic.SetupService(PORT, OPTIC_ROUTE, mux)
+	optic.SetupService(PORT, OPTIC_ROUTE, encodeErr, decodeErr, mux)
 
-	// An optic mirror simply recieves information and sends information back
+	// An optical mirror simply recieves information and sends information back
 	optic.Mirror(Divide) // by default optic will use function name as route
-
 	err = optic.Serve() // run the service
-	if err != nil {
-		panic(err)
-	}
 }
 ```
 
@@ -63,28 +70,15 @@ func main {
 	optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
 	// Make requests
 	var (
-		err error            // internal error
-		exn *optic.Exception // service exception
-		sln Solution         // output
+		err     error          // internal error
+		httpErr *UserHttpError // service exception
+		sln     Solution       // output
 	)
-	//                                  send                          receive
-	exn, err = optic.Glance("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
-	fmt.Println(err, exn)   // <nil> <nil>
-	fmt.Println(sln.Answer) // 2
+	//                                                     send                          receive
+	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
+	fmt.Println(err, httpErr) // <nil> <nil>
+	fmt.Println(sln.Answer)   // 2
 }
-```
-
-## Serialization errors
-Optic handles 2 errors for you
-```
-var (
-	ErrorReadingResponseBody      = "There was an error reading the request data. Are you sure you sent a valid request body?"
-	ErrorUnmarshalingResponseBody = "There was an error unmarshaling the request data into the proper format."
-)
-```
-You can override one of these error messages with:
-```
-optic.ErrorReadingResponseBody = "Custom message"
 ```
 
 ## net/http compatibility
@@ -130,6 +124,9 @@ For the full example in code see [./examples/main.go](https://github.com/nanveno
 
 Run the example like so:
 ![run example](.rsrc/run-example.gif)
+
+## Feedback from the community
+See [this reddit post](https://www.reddit.com/r/golang/comments/14v3936/nethttp_extension_to_exchange_structs/) where I attempted to respond to some feedback from the community.
 
 ## Simplicity
 https://github.com/nanvenomous/optic/blob/b8a94eb20e2ae535252c56ea8d283f2b794cffd4/go.mod#L1-L3

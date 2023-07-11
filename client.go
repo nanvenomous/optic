@@ -28,14 +28,14 @@ func SetupClient(host, port, path string, secure bool) {
 	}
 }
 
-func Glance[S, R any](path string, send *S, recieve *R, headers ...http.Header) (*Exception, error) {
+func Glance[E any](path string, send any, recieve any, headers ...http.Header) (*E, error) {
 	var (
-		err  error
-		exn  *Exception
-		data []byte
-		url  *url.URL
-		req  *http.Request
-		res  *http.Response
+		err     error
+		httpErr E
+		data    []byte
+		url     *url.URL
+		req     *http.Request
+		res     *http.Response
 	)
 
 	data, err = json.Marshal(send)
@@ -59,8 +59,8 @@ func Glance[S, R any](path string, send *S, recieve *R, headers ...http.Header) 
 	}
 
 	if res.StatusCode != http.StatusOK {
-		exn, err = getExceptionFromResponse(res)
-		return exn, err
+		httpErr, err = getHttpErrorFromResponse[E](res)
+		return &httpErr, err
 	}
 
 	err = FromResponse(res, recieve)

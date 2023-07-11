@@ -1,31 +1,24 @@
 package optic
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 )
 
 const (
-	DEFAULT_BASE_PATH = "/"
+	default_base_path = "/"
 )
 
-type Exception struct {
-	Internal string `json:"internal"`
-	Message  string `json:"message"`
-	Code     int    `json:"code"`
+type HttpError interface {
+	GetCode() int
 }
 
-var (
-	EMPTY_BYTE_ARRAY = bytes.NewBuffer([]byte{})
-)
-
+// Empty is useful when you want to Glance with no input
 type Empty struct{}
 
-func FromResponse[T any](res *http.Response, recieved *T) error {
+func FromResponse(res *http.Response, recieved any) error {
 	var (
 		err error
 	)
@@ -40,25 +33,15 @@ func FromResponse[T any](res *http.Response, recieved *T) error {
 	return errors.New(fmt.Sprintf("The response failed with status %s", res.Status))
 }
 
-func GetUrl(base string, elem ...string) (*url.URL, error) {
-	url, err := url.Parse(base)
-	if err != nil {
-		return nil, err
-	}
-	extUrl := url.JoinPath(elem...)
-	return extUrl, nil
-}
-
-func getExceptionFromResponse(res *http.Response) (*Exception, error) {
+func getHttpErrorFromResponse[E any](res *http.Response) (E, error) {
 	var (
-		err error
-		exn Exception
+		err     error
+		httpErr E
 	)
 	defer res.Body.Close()
-	err = json.NewDecoder(res.Body).Decode(&exn)
+	err = json.NewDecoder(res.Body).Decode(&httpErr)
 	if err != nil {
-		return nil, err
+		return httpErr, err
 	}
-	exn.Code = res.StatusCode
-	return &exn, nil
+	return httpErr, nil
 }

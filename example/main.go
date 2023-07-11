@@ -29,27 +29,38 @@ type Division struct {
 	Bottom int
 }
 
-func Subtract(recieved *Subtraction, r *http.Request) (*Solution, *optic.Exception) {
+type UserHttpError struct {
+	Message string
+	Code    int
+}
+
+func (e *UserHttpError) GetCode() int {
+	return e.Code
+}
+
+func Subtract(recieved *Subtraction, r *http.Request) (*Solution, optic.HttpError) {
 	// Do something with a header (like check Authorization)
 	fmt.Println(r.Header.Get("Authorization"))
 
 	return &Solution{Answer: recieved.First - recieved.Second}, nil
 }
 
-func Divide(recieved *Division, r *http.Request) (*Solution, *optic.Exception) {
+func Divide(recieved *Division, r *http.Request) (*Solution, optic.HttpError) {
 	if recieved.Bottom == 0 { // return an error
-		return nil, &optic.Exception{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
+		return nil, &UserHttpError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
 	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
 }
 
 func setupService() {
 	var (
-		err error
-		mux *http.ServeMux
+		err       error
+		encodeErr = &UserHttpError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
+		decodeErr = &UserHttpError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
+		mux       *http.ServeMux
 	)
 	mux = http.NewServeMux()
-	optic.SetupService(PORT, OPTIC_ROUTE, mux)
+	optic.SetupService(PORT, OPTIC_ROUTE, encodeErr, decodeErr, mux)
 
 	// An optical mirror simply recieves information and sends information back
 	optic.Mirror(Subtract, "/RunSubtraction/")
@@ -79,22 +90,22 @@ func main() {
 	optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
 	// Make requests
 	var (
-		err error            // internal error
-		exn *optic.Exception // service exception
-		sln Solution         // output
+		err     error          // internal error
+		httpErr *UserHttpError // service exception
+		sln     Solution       // output
 	)
-	exn, err = optic.Glance("/RunSubtraction/", &Subtraction{First: 1, Second: 2}, &sln)
-	fmt.Println(err, exn)   // <nil> <nil>
-	fmt.Println(sln.Answer) // -1
+	httpErr, err = optic.Glance[UserHttpError]("/RunSubtraction/", &Subtraction{First: 1, Second: 2}, &sln)
+	fmt.Println(err, httpErr) // <nil> <nil>
+	fmt.Println(sln.Answer)   // -1
 
-	exn, err = optic.Glance("/Divide/", &Division{Top: 1, Bottom: 0}, &sln)
-	fmt.Println(err, exn) // <nil> &{ Impossible to divide by Zero 422}
-	fmt.Println(sln)      // <nil>
+	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 1, Bottom: 0}, &sln)
+	fmt.Println(err, httpErr) // <nil> &{ Impossible to divide by Zero 422}
+	fmt.Println(sln)          // <nil>
 
-	//                                  send                          receive
-	exn, err = optic.Glance("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
-	fmt.Println(err, exn)   // <nil> <nil>
-	fmt.Println(sln.Answer) // 2
+	//                                                     send                          receive
+	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
+	fmt.Println(err, httpErr) // <nil> <nil>
+	fmt.Println(sln.Answer)   // 2
 }
 
 func exampleMiddleware(next http.Handler) http.Handler {

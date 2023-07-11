@@ -10,25 +10,25 @@ import (
 	"strings"
 )
 
-var (
-	ErrorReadingResponseBody      = "There was an error reading the request data. Are you sure you sent a valid request body?"
-	ErrorUnmarshalingResponseBody = "There was an error unmarshaling the request data into the proper format."
-)
-
-type Eye[S, R any] func(*R, *http.Request) (*S, *Exception)
+type Eye[S, R any] func(*R, *http.Request) (*S, HttpError)
 
 var (
-	Port       = "4444"
-	Base       = &url.URL{Path: DEFAULT_BASE_PATH}
-	Mux        *http.ServeMux
-	Middleware = []func(http.Handler) http.Handler{}
+	Port                             = "4444"
+	Base                             = &url.URL{Path: default_base_path}
+	Mux                              *http.ServeMux
+	allMiddleware                    = []func(http.Handler) http.Handler{}
+	decodeHttpError, encodeHttpError HttpError
 )
 
 func RegisterMiddleware(middleware func(http.Handler) http.Handler) {
-	Middleware = append(Middleware, middleware)
+	allMiddleware = append(allMiddleware, middleware)
 }
 
-func SetupService(port, base string, mux *http.ServeMux) {
+func SetupService(port, base string, encodeErr, decodeErr HttpError, mux *http.ServeMux) {
+	// TODO: more validation of input params (i.e. port number)
+	// also if mux is optional we need to fail hard on registering middleware or remove that feature alltogether
+	encodeHttpError = encodeErr
+	decodeHttpError = decodeErr
 	Port = port
 	if base != "" {
 		Base = &url.URL{Path: base}
@@ -45,7 +45,7 @@ func Serve() error {
 		server  *http.Server
 	)
 	handler = Mux
-	for _, mdwr := range Middleware {
+	for _, mdwr := range allMiddleware {
 		handler = mdwr(handler)
 	}
 
@@ -58,7 +58,7 @@ func Serve() error {
 	return server.ListenAndServe()
 }
 
-func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S) {
+func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send S) {
 	var (
 		err     error
 		encoder *json.Encoder
@@ -68,16 +68,20 @@ func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send *S)
 	encoder = json.NewEncoder(w)
 	err = encoder.Encode(send)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(encodeHttpError.GetCode())
+		err = encoder.Encode(encodeHttpError)
+		if err != nil {
+			fmt.Println("[OPTIC] unable to send error body", err)
+		}
 		return
 	}
 	reflected(code, r.URL.Path)
 }
 
-func SendException(w http.ResponseWriter, r *http.Request, exn *Exception) {
-	fmt.Println("[MESSAGE] ", exn.Message)
-	fmt.Println("[INTERNAL] ", exn.Internal)
-	sendBytes(w, r, exn.Code, exn)
+// SendHttpError exposed so you can manually send an optic HttpError in normal net/http HandleFunc
+// note you will need to return from the handler after calling this method
+func SendHttpError(w http.ResponseWriter, r *http.Request, httpErr HttpError) {
+	sendBytes(w, r, httpErr.GetCode(), httpErr)
 }
 
 func getFunctionName(i interface{}) string {
@@ -111,20 +115,20 @@ func Mirror[R, S any](eye Eye[S, R], paths ...string) {
 			err     error
 			rec     R
 			send    *S
-			exn     *Exception
+			httpErr HttpError
 			decoder *json.Decoder
 		)
 
 		decoder = json.NewDecoder(r.Body)
 		err = decoder.Decode(&rec)
 		if err != nil {
-			SendException(w, r, &Exception{Code: http.StatusNotAcceptable, Message: ErrorUnmarshalingResponseBody, Internal: err.Error()})
+			SendHttpError(w, r, decodeHttpError)
 			return
 		}
 
-		send, exn = eye(&rec, r)
-		if exn != nil {
-			SendException(w, r, exn)
+		send, httpErr = eye(&rec, r)
+		if httpErr != nil {
+			SendHttpError(w, r, httpErr)
 			return
 		}
 
