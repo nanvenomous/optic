@@ -127,7 +127,7 @@ I am planning some outreach so I can get feedback from other go developers & aim
 
 - [x] [reddit post](https://www.reddit.com/r/golang/comments/14v3936/nethttp_extension_to_exchange_structs/)
     - [x] Lack of transparency in error handling, poor naming convention `Exception`, removing unessecary generics [resolution commit](https://github.com/nanvenomous/optic/commit/f5bb4ba464351ae9cef5a0d5f5934984350f04a7)
-    - [x] using revive for better code analysis, tightened up module exports - [resolution commit]()
+    - [x] using revive for better code analysis, tightened up module exports - [resolution commit](https://github.com/nanvenomous/optic/commit/cfb8a4121a468c863b5bfa6559005a4d6c4829cc)
 
 ## Simplicity
 https://github.com/nanvenomous/optic/blob/b8a94eb20e2ae535252c56ea8d283f2b794cffd4/go.mod#L1-L3
