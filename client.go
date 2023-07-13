@@ -9,10 +9,11 @@ import (
 )
 
 var (
-	ServiceEndpoint string
-	ClientUrl       *url.URL
+	clientURL *url.URL
 )
 
+// SetupClient takes all parameters to setup the net/http client
+// prereq to calling optic.Glance
 func SetupClient(host, port, path string, secure bool) {
 	schm := "http"
 	if secure {
@@ -21,13 +22,16 @@ func SetupClient(host, port, path string, secure bool) {
 	if port != "" {
 		host = fmt.Sprintf("%s:%s", host, port)
 	}
-	ClientUrl = &url.URL{
+	clientURL = &url.URL{
 		Scheme: schm,
 		Host:   host,
 		Path:   path,
 	}
 }
 
+// Glance makes a request to the Mirror at the same path (Glance in the Mirror)
+// you send a go struct and you recieve a go struct back
+// the type param is the error struct you expect to receive
 func Glance[E any](path string, send any, recieve any, headers ...http.Header) (*E, error) {
 	var (
 		err     error
@@ -43,7 +47,7 @@ func Glance[E any](path string, send any, recieve any, headers ...http.Header) (
 		return nil, err
 	}
 
-	url = ClientUrl.JoinPath(path)
+	url = clientURL.JoinPath(path)
 	req, err = http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
@@ -59,7 +63,7 @@ func Glance[E any](path string, send any, recieve any, headers ...http.Header) (
 	}
 
 	if res.StatusCode != http.StatusOK {
-		httpErr, err = getHttpErrorFromResponse[E](res)
+		httpErr, err = getHTTPErrorFromResponse[E](res)
 		return &httpErr, err
 	}
 

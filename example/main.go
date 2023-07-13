@@ -1,3 +1,4 @@
+// this basic example shows how to set up optic routes and call them with the provided client
 package main
 
 import (
@@ -10,64 +11,66 @@ import (
 )
 
 const (
-	PORT        = "4040"
-	HOST        = "127.0.0.1"
-	OPTIC_ROUTE = "/api/optic/"
+	port           = "4040"
+	host           = "127.0.0.1"
+	userOpticRoute = "/api/optic/"
 )
 
-type Solution struct {
+type solution struct {
 	Answer int
 }
 
-type Subtraction struct {
+type subtraction struct {
 	First  int
 	Second int
 }
 
-type Division struct {
+type division struct {
 	Top    int
 	Bottom int
 }
 
-type UserHttpError struct {
+type userHTTPError struct {
 	Message string
 	Code    int
 }
 
-func (e *UserHttpError) GetCode() int {
+// GetCode method returns the http.StatusCode for the HTTPError
+// necessary to send the http code in a response
+func (e *userHTTPError) GetCode() int {
 	return e.Code
 }
 
-func Subtract(recieved *Subtraction, r *http.Request) (*Solution, optic.HttpError) {
-	// Do something with a header (like check Authorization)
+func subtract(recieved *subtraction, r *http.Request) (*solution, optic.HTTPError) {
+	// Do something with a header (like check Authorization, or get a cookie)
 	fmt.Println(r.Header.Get("Authorization"))
 
-	return &Solution{Answer: recieved.First - recieved.Second}, nil
+	return &solution{Answer: recieved.First - recieved.Second}, nil
 }
 
-func Divide(recieved *Division, r *http.Request) (*Solution, optic.HttpError) {
+func divide(recieved *division, _ *http.Request) (*solution, optic.HTTPError) {
 	if recieved.Bottom == 0 { // return an error
-		return nil, &UserHttpError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
+		return nil, &userHTTPError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
-	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
+	return &solution{Answer: recieved.Top / recieved.Bottom}, nil
 }
 
 func setupService() {
 	var (
 		err       error
-		encodeErr = &UserHttpError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
-		decodeErr = &UserHttpError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
+		encodeErr = &userHTTPError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
+		decodeErr = &userHTTPError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
 		mux       *http.ServeMux
 	)
 	mux = http.NewServeMux()
-	optic.SetupService(PORT, OPTIC_ROUTE, encodeErr, decodeErr, mux)
+	optic.SetupService(port, userOpticRoute, encodeErr, decodeErr, mux)
 
 	// An optical mirror simply recieves information and sends information back
-	optic.Mirror(Subtract, "/RunSubtraction/")
-	optic.Mirror(Divide) // by default optic will use function name as route
+	optic.Mirror(subtract, "/RunSubtraction/")
+	optic.Mirror(divide) // by default optic will use function name as route
 
 	// Add other routes not handled by optic, as you would with any net/http service
-	mux.HandleFunc("/health-check/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health-check/", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	// Add any net/http middleware
@@ -87,23 +90,23 @@ func main() {
 
 	waitServiceUp() // only for this example
 
-	optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
+	optic.SetupClient(host, port, userOpticRoute, false)
 	// Make requests
 	var (
 		err     error          // internal error
-		httpErr *UserHttpError // service exception
-		sln     Solution       // output
+		httpErr *userHTTPError // service exception
+		sln     solution       // output
 	)
-	httpErr, err = optic.Glance[UserHttpError]("/RunSubtraction/", &Subtraction{First: 1, Second: 2}, &sln)
+	httpErr, err = optic.Glance[userHTTPError]("/RunSubtraction/", &subtraction{First: 1, Second: 2}, &sln)
 	fmt.Println(err, httpErr) // <nil> <nil>
 	fmt.Println(sln.Answer)   // -1
 
-	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 1, Bottom: 0}, &sln)
+	httpErr, err = optic.Glance[userHTTPError]("/divide/", &division{Top: 1, Bottom: 0}, &sln)
 	fmt.Println(err, httpErr) // <nil> &{ Impossible to divide by Zero 422}
 	fmt.Println(sln)          // <nil>
 
 	//                                                     send                          receive
-	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
+	httpErr, err = optic.Glance[userHTTPError]("/divide/", &division{Top: 4, Bottom: 2}, &sln)
 	fmt.Println(err, httpErr) // <nil> <nil>
 	fmt.Println(sln.Answer)   // 2
 }
@@ -123,7 +126,7 @@ func waitServiceUp() error {
 		req *http.Request
 	)
 
-	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%s/health-check/", HOST, PORT), bytes.NewBuffer([]byte{}))
+	req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%s/health-check/", host, port), bytes.NewBuffer([]byte{}))
 	if err != nil {
 		return err
 	}

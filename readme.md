@@ -21,45 +21,42 @@ import (
 
 Define the entities and error interface
 ```go
-type Division struct {
+type solution struct {
+	Answer int
+}
+type division struct {
 	Top    int
 	Bottom int
 }
-type Solution struct {
-	Answer int
-}
-
-type UserHttpError struct {
+type userHTTPError struct {
 	Message string
 	Code    int
 }
-
-func (e *UserHttpError) GetCode() int {
+func (e *userHTTPError) GetCode() int {
 	return e.Code
 }
 ```
 
 Setup the service route
 ```go
-func Divide(recieved *Division, r *http.Request) (*Solution, optic.HttpError) {
+func divide(recieved *division, _ *http.Request) (*solution, optic.HTTPError) {
 	if recieved.Bottom == 0 { // return an error
-		return nil, &UserHttpError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
+		return nil, &userHTTPError{Code: http.StatusUnprocessableEntity, Message: "Impossible to divide by Zero"}
 	}
-	return &Solution{Answer: recieved.Top / recieved.Bottom}, nil
+	return &solution{Answer: recieved.Top / recieved.Bottom}, nil
 }
 
 func main() {
 	var (
 		err       error
-		encodeErr = &UserHttpError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
-		decodeErr = &UserHttpError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
+		encodeErr = &userHTTPError{Code: http.StatusInternalServerError, Message: "Failed to encode your response."}
+		decodeErr = &userHTTPError{Code: http.StatusNotAcceptable, Message: "Failed to decode your request body."}
 		mux       *http.ServeMux
 	)
 	mux = http.NewServeMux()
-	optic.SetupService(PORT, OPTIC_ROUTE, encodeErr, decodeErr, mux)
-
+	optic.SetupService(port, userOpticRoute, encodeErr, decodeErr, mux)
 	// An optical mirror simply recieves information and sends information back
-	optic.Mirror(Divide) // by default optic will use function name as route
+	optic.Mirror(divide) // by default optic will use function name as route
 	err = optic.Serve() // run the service
 }
 ```
@@ -67,15 +64,15 @@ func main() {
 Setup the client and make a request
 ```go
 func main {
-	optic.SetupClient(HOST, PORT, OPTIC_ROUTE, false)
+	optic.SetupClient(host, port, userOpticRoute, false)
 	// Make requests
 	var (
 		err     error          // internal error
-		httpErr *UserHttpError // service exception
-		sln     Solution       // output
+		httpErr *userHTTPError // service exception
+		sln     solution       // output
 	)
 	//                                                     send                          receive
-	httpErr, err = optic.Glance[UserHttpError]("/Divide/", &Division{Top: 4, Bottom: 2}, &sln)
+	httpErr, err = optic.Glance[userHTTPError]("/divide/", &division{Top: 4, Bottom: 2}, &sln)
 	fmt.Println(err, httpErr) // <nil> <nil>
 	fmt.Println(sln.Answer)   // 2
 }
@@ -94,15 +91,15 @@ func main() {
 		mux *http.ServeMux
 	)
 	mux = http.NewServeMux()
-	optic.SetupService(PORT, OPTIC_ROUTE, mux)
+	optic.SetupService(port, userOpticRoute, encodeErr, decodeErr, mux)
 
-    // Add other routes not handled by optic, as you would with any net/http service
-    mux.HandleFunc("/health-check/", func(w http.ResponseWriter, r *http.Request) {
-        w.WriteHeader(http.StatusOK)
-    })
+	// Add other routes not handled by optic, as you would with any net/http service
+	mux.HandleFunc("/health-check/", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
     // optic can register middleware for you
-    optic.RegisterMiddleware(exampleMiddleware)
+	optic.RegisterMiddleware(exampleMiddleware)
     // or you can do it yourself
     var (
         handler http.Handler
@@ -125,8 +122,12 @@ For the full example in code see [./examples/main.go](https://github.com/nanveno
 Run the example like so:
 ![run example](.rsrc/run-example.gif)
 
-## Feedback from the community
-See [this reddit post](https://www.reddit.com/r/golang/comments/14v3936/nethttp_extension_to_exchange_structs/) where I attempted to respond to some feedback from the community.
+## Community
+I am planning some outreach so I can get feedback from other go developers & aiming to address major concerns between each post
+
+- [x] [reddit post](https://www.reddit.com/r/golang/comments/14v3936/nethttp_extension_to_exchange_structs/)
+    - [x] Lack of transparency in error handling, poor naming convention `Exception`, removing unessecary generics [resolution commit](https://github.com/nanvenomous/optic/commit/f5bb4ba464351ae9cef5a0d5f5934984350f04a7)
+    - [x] using revive for better code analysis, tightened up module exports - [resolution commit]()
 
 ## Simplicity
 https://github.com/nanvenomous/optic/blob/b8a94eb20e2ae535252c56ea8d283f2b794cffd4/go.mod#L1-L3

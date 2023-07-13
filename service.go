@@ -10,51 +10,62 @@ import (
 	"strings"
 )
 
-type Eye[S, R any] func(*R, *http.Request) (*S, HttpError)
+// Glass is the core internal component of a Mirror
+// and optic.Glass recieves the struct R from the client
+// it then does the processing server side to either return the desired S or a HTTPError
+type Glass[S, R any] func(*R, *http.Request) (*S, HTTPError)
 
 var (
-	Port                             = "4444"
-	Base                             = &url.URL{Path: default_base_path}
-	Mux                              *http.ServeMux
+	port                             = "4444"
+	base                             = &url.URL{Path: defaultBasePath}
+	mux                              *http.ServeMux
 	allMiddleware                    = []func(http.Handler) http.Handler{}
-	decodeHttpError, encodeHttpError HttpError
+	decodeHTTPError, encodeHTTPError HTTPError
 )
 
+// RegisterMiddleware optic will store all your middleware and add it before calling optic.Serve
+// note you must call optic.Serve manuall and you must have passed a http.ServerMux on call to SetupService
 func RegisterMiddleware(middleware func(http.Handler) http.Handler) {
 	allMiddleware = append(allMiddleware, middleware)
 }
 
-func SetupService(port, base string, encodeErr, decodeErr HttpError, mux *http.ServeMux) {
-	// TODO: more validation of input params (i.e. port number)
-	// also if mux is optional we need to fail hard on registering middleware or remove that feature alltogether
-	encodeHttpError = encodeErr
-	decodeHttpError = decodeErr
-	Port = port
-	if base != "" {
-		Base = &url.URL{Path: base}
+// SetupService takes all the necessary data to register Mirrors and run an optic service
+// you also need to provide the errors that will be sent over the network if serialization fails
+// you can optionally pass a http.ServeMux
+func SetupService(localPort, basePath string, encodeErr, decodeErr HTTPError, httpMux *http.ServeMux) {
+	// TODO: more validation of input params (i.e. localPort number)
+	// also if httpMux is optional we need to fail hard on registering middleware or remove that feature alltogether
+	encodeHTTPError = encodeErr
+	decodeHTTPError = decodeErr
+	port = localPort
+	if basePath != "" {
+		base = &url.URL{Path: basePath}
 	}
-	cyan("BASE", Base.Path)
-	if mux != nil {
-		Mux = mux
+	cyan("BASE", base.Path)
+	if httpMux != nil {
+		mux = httpMux
 	}
 }
 
+// Serve calls mux.ListenAndServe
+// If you registered net/http middleware it will be applied first
+// This is a convenience function you can serve manually with http.ListenAndServe or mux.ListenAndServe
 func Serve() error {
 	var (
 		handler http.Handler
 		server  *http.Server
 	)
-	handler = Mux
+	handler = mux
 	for _, mdwr := range allMiddleware {
 		handler = mdwr(handler)
 	}
 
 	server = &http.Server{
-		Addr:    ":" + Port,
+		Addr:    ":" + port,
 		Handler: handler,
 	}
 
-	serving(Port)
+	serving(port)
 	return server.ListenAndServe()
 }
 
@@ -68,8 +79,8 @@ func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send S) 
 	encoder = json.NewEncoder(w)
 	err = encoder.Encode(send)
 	if err != nil {
-		w.WriteHeader(encodeHttpError.GetCode())
-		err = encoder.Encode(encodeHttpError)
+		w.WriteHeader(encodeHTTPError.GetCode())
+		err = encoder.Encode(encodeHTTPError)
 		if err != nil {
 			fmt.Println("[OPTIC] unable to send error body", err)
 		}
@@ -78,9 +89,9 @@ func sendBytes[S any](w http.ResponseWriter, r *http.Request, code int, send S) 
 	reflected(code, r.URL.Path)
 }
 
-// SendHttpError exposed so you can manually send an optic HttpError in normal net/http HandleFunc
+// SendHTTPError exposed so you can manually send an optic HttpError in normal net/http HandleFunc
 // note you will need to return from the handler after calling this method
-func SendHttpError(w http.ResponseWriter, r *http.Request, httpErr HttpError) {
+func SendHTTPError(w http.ResponseWriter, r *http.Request, httpErr HTTPError) {
 	sendBytes(w, r, httpErr.GetCode(), httpErr)
 }
 
@@ -95,7 +106,10 @@ func getFunctionName(i interface{}) string {
 	return pth
 }
 
-func Mirror[R, S any](eye Eye[S, R], paths ...string) {
+// Mirror registers a Glass handler at the desired path
+// e.g. optic.Mirror(subtract, "/RunSubtraction/")
+// once the handler is registered use optic.Glance to make the request to the Mirror
+func Mirror[R, S any](glass Glass[S, R], paths ...string) {
 	var (
 		pth        string
 		ul         *url.URL
@@ -103,40 +117,40 @@ func Mirror[R, S any](eye Eye[S, R], paths ...string) {
 	)
 
 	if len(paths) == 0 { // not passing a path will simply use the function name
-		pth = getFunctionName(eye)
+		pth = getFunctionName(glass)
 	} else {
 		pth = paths[0]
 	}
 	violet("PATH", pth)
-	ul = Base.JoinPath(pth)
+	ul = base.JoinPath(pth)
 
 	handleFunc = func(w http.ResponseWriter, r *http.Request) {
 		var (
 			err     error
 			rec     R
 			send    *S
-			httpErr HttpError
+			httpErr HTTPError
 			decoder *json.Decoder
 		)
 
 		decoder = json.NewDecoder(r.Body)
 		err = decoder.Decode(&rec)
 		if err != nil {
-			SendHttpError(w, r, decodeHttpError)
+			SendHTTPError(w, r, decodeHTTPError)
 			return
 		}
 
-		send, httpErr = eye(&rec, r)
+		send, httpErr = glass(&rec, r)
 		if httpErr != nil {
-			SendHttpError(w, r, httpErr)
+			SendHTTPError(w, r, httpErr)
 			return
 		}
 
 		sendBytes(w, r, http.StatusOK, send)
 	}
 
-	if Mux != nil {
-		Mux.HandleFunc(ul.Path, handleFunc)
+	if mux != nil {
+		mux.HandleFunc(ul.Path, handleFunc)
 	} else {
 		http.HandleFunc(ul.Path, handleFunc)
 	}

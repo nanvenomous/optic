@@ -65,6 +65,6 @@ func reflected(code int, path string) {
 		}
 	}
 
-	path = "/" + strings.Replace(path, Base.String(), "", 1)
+	path = "/" + strings.Replace(path, base.String(), "", 1)
 	colorReversePrint(fmt.Sprintf("%d", code), path, color)
 }

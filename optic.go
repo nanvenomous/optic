@@ -1,23 +1,27 @@
+// Package optic a generic net/http extension that makes exchanging data in go really fun
 package optic
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 )
 
 const (
-	default_base_path = "/"
+	defaultBasePath = "/"
 )
 
-type HttpError interface {
+// HTTPError optic needs a http.StatusCode to properly send the response
+// otherwise HTTPError can be any go struct
+type HTTPError interface {
 	GetCode() int
 }
 
-// Empty is useful when you want to Glance with no input
+// Empty is useful when you want to Glance with no input struct
 type Empty struct{}
 
+// FromResponse decodes the net/http Response.Body into the desired struct
+// exporting because FromResponse is useful on it's own in normal net/http handlers
 func FromResponse(res *http.Response, recieved any) error {
 	var (
 		err error
@@ -30,10 +34,10 @@ func FromResponse(res *http.Response, recieved any) error {
 		}
 		return nil
 	}
-	return errors.New(fmt.Sprintf("The response failed with status %s", res.Status))
+	return fmt.Errorf("The response failed with status %s", res.Status)
 }
 
-func getHttpErrorFromResponse[E any](res *http.Response) (E, error) {
+func getHTTPErrorFromResponse[E any](res *http.Response) (E, error) {
 	var (
 		err     error
 		httpErr E
