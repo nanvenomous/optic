@@ -141,7 +141,8 @@ func Mirror[R, S any](glass Glass[S, R], paths ...string) {
 		}
 
 		send, httpErr = glass(&rec, r)
-		if httpErr != nil {
+		httpErrIsNil := reflect.ValueOf(httpErr).Kind() == reflect.Ptr && reflect.ValueOf(httpErr).IsNil()
+		if !httpErrIsNil {
 			SendHTTPError(w, r, httpErr)
 			return
 		}
