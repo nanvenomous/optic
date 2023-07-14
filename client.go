@@ -1,3 +1,6 @@
+//go:build (linux && !android) || openbsd || freebsd || netbsd
+// +build linux,!android openbsd freebsd netbsd
+
 package optic
 
 import (
